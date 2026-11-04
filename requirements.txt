@@ -1,0 +1,1 @@
+truststore>=0.9  # optional: fixes HTTPS certificate errors on some sites
