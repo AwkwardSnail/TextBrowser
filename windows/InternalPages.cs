@@ -56,7 +56,8 @@ public static class InternalPages
           ALT+RIGHT            FORWARD
           ALT+HOME             HOME PAGE
           F5                   RELOAD
-          ESC                  CANCEL LOADING
+          F11  or  ALT+ENTER   FULL SCREEN
+          ESC                  LEAVE FULL SCREEN / CANCEL LOADING
           F1                   THIS HELP PAGE
           F2                   CHANGE PHOSPHOR COLOUR (GREEN / AMBER / WHITE)
           F3                   CRT EFFECTS ON / OFF (GLOW AND SCANLINES)

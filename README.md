@@ -34,8 +34,9 @@ A C# / WPF rebuild intended for the Microsoft Store. Pages are loaded by a hidde
 Microsoft Edge WebView2 (Chromium) engine, so sites that build their text with
 JavaScript work too. Images, video, audio and fonts are blocked before they download;
 `Extract.js` then pulls only the visible text and links out of the page.
-It adds CRT effects (glow, scanlines, darkened corners; F3 toggles them) and lets you
-type a link number straight from the page.
+It adds CRT effects (glow, scanlines, darkened corners; F3 toggles them), full screen
+(F11 or Alt+Enter; Esc returns to the window), and lets you type a link number straight
+from the page.
 
 Needs the .NET 10 SDK and the WebView2 runtime (built into Windows 11):
 

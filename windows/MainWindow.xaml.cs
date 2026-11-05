@@ -45,6 +45,8 @@ public partial class MainWindow : Window
 
     int _theme;
     bool _crt = true;
+    bool _fullScreen;
+    WindowState _windowedState;
     readonly DropShadowEffect _glow;
     ScrollViewer? _scroll;
     readonly DispatcherTimer _spinner;
@@ -379,6 +381,8 @@ public partial class MainWindow : Window
             (Key.F2, _) => NextTheme,
             (Key.F3, _) => ToggleCrt,
             (Key.F5, _) => Reload,
+            (Key.F11, _) or (Key.Enter, ModifierKeys.Alt) => ToggleFullScreen,
+            (Key.Escape, _) when _fullScreen => ToggleFullScreen,
             (Key.Escape, _) => Stop,
             _ when inUrlBox || _scroll is null => null,
             (Key.Back, _) => Back,
@@ -449,6 +453,28 @@ public partial class MainWindow : Window
         Screen.Effect = _crt ? _glow : null;
         ScanlineLayer.Visibility = VignetteLayer.Visibility = _crt ? Visibility.Visible : Visibility.Collapsed;
         SetStatus(_crt ? "CRT EFFECTS: ON" : "CRT EFFECTS: OFF");
+    }
+
+    /// <summary>Fill the whole screen (no title bar or taskbar), or go back to the window.</summary>
+    void ToggleFullScreen()
+    {
+        _fullScreen = !_fullScreen;
+        if (_fullScreen)
+        {
+            _windowedState = WindowState;
+            WindowState = WindowState.Normal;       // re-maximising without a border covers the taskbar
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+            SetStatus("FULL SCREEN  -  PRESS ESC TO RETURN TO THE WINDOW");
+        }
+        else
+        {
+            WindowStyle = WindowStyle.SingleBorderWindow;
+            ResizeMode = ResizeMode.CanResize;
+            WindowState = _windowedState;
+            ShowPageStatus();
+        }
     }
 
     void QueueCaretUpdate() => Dispatcher.BeginInvoke(UpdateCaret, DispatcherPriority.Render);
