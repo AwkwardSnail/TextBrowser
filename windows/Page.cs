@@ -17,6 +17,8 @@ public sealed class Page
     public string Title { get; init; } = "";
     public List<TextRun> Runs { get; init; } = [];
     public List<string> Links { get; init; } = [];
+    /// <summary>Element ids on the page and the index of the run where each one starts.</summary>
+    public Dictionary<string, int> Anchors { get; init; } = [];
 
     /// <summary>A page built locally, for errors and other notices.</summary>
     public static Page Message(string url, string title, params string[] lines)

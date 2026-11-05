@@ -28,6 +28,7 @@
   for (const h of HEADINGS) STYLE[h] = "h";
 
   const runs = [], links = [], styles = [], lists = [];
+  const anchors = {};  // element id -> index of the first run after it, for #section links
   let wantNl = 0;      // newlines the next text must be preceded by
   let trailNl = 0;     // newlines already at the end of the output
   let last = "\n";
@@ -78,6 +79,8 @@
   }
 
   function start(tag, el) {
+    const anchor = el.id || (tag === "A" && el.name) || "";
+    if (anchor && !(anchor in anchors)) anchors[anchor] = runs.length;
     if (BLOCK.has(tag)) {
       const nestedList = (tag === "UL" || tag === "OL") && lists.length;
       brk(PARA.has(tag) && !nestedList ? 2 : 1);
@@ -126,7 +129,13 @@
     if (tag === "A" && link && link.el === el) {
       const n = link.n;
       link = null;
-      if (n) write(`[${n}]`, ["linknum", n]);
+      if (n) {
+        // Keep [n] on the same line as the link text, even if the link held a block.
+        const pending = wantNl;
+        wantNl = 0;
+        write(`[${n}]`, ["linknum", n]);
+        brk(pending);
+      }
     } else if ((tag === "UL" || tag === "OL" || tag === "MENU") && lists.length) {
       lists.pop();
     } else if (tag === "PRE") {
@@ -205,11 +214,17 @@
   }
 
   if (document.body) walk(document.body);
-  while (runs.length && !runs[0][0].trim()) runs.shift();
+  let removed = 0;
+  while (runs.length && !runs[0][0].trim() && !runs[0][3]) {
+    runs.shift();
+    removed++;
+  }
+  for (const id in anchors) anchors[id] = Math.max(0, anchors[id] - removed);
   return {
     url: location.href,
     title: (document.title || "").replace(/\s+/g, " ").trim(),
     runs,
     links,
+    anchors,
   };
 })()

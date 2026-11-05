@@ -10,11 +10,15 @@ namespace TextBrowser;
 public static class PageRenderer
 {
     /// <summary>Builds the document. Focusables maps each control's id to the element that takes
-    /// keyboard focus, so focus can be put back after the page is redrawn.</summary>
+    /// keyboard focus, so focus can be put back after the page is redrawn; anchors maps page
+    /// element ids to where they start, for #section links.</summary>
     public static FlowDocument Render(Page page, IPageActions actions, double charWidth,
-                                      out Dictionary<string, IInputElement> focusables)
+                                      out Dictionary<string, IInputElement> focusables,
+                                      out Dictionary<string, TextElement> anchors)
     {
-        focusables = [];
+        var controls = new Dictionary<string, IInputElement>();
+        focusables = controls;
+        var runStarts = new Dictionary<int, TextElement>();
         var doc = new FlowDocument
         {
             TextAlignment = TextAlignment.Left,
@@ -26,13 +30,36 @@ public static class PageRenderer
         doc.Blocks.Add(para);
 
         Hyperlink? link = null;
-        foreach (var run in page.Runs)
+        for (var index = 0; index < page.Runs.Count; index++)
+        {
+            // Remember the first element each run adds, so anchors can scroll to it.
+            var before = para.Inlines.LastInline;
+            AddRun(page.Runs[index]);
+            if (para.Inlines.LastInline is { } added && added != before)
+                runStarts[index] = added;
+        }
+
+        // An anchor points at the run after its element; if that run added nothing of its
+        // own (it continued a link), use the next run that did.
+        var starts = runStarts.Keys.Order().ToArray();
+        anchors = [];
+        foreach (var (id, runIndex) in page.Anchors)
+        {
+            var at = Array.BinarySearch(starts, runIndex);
+            if (at < 0)
+                at = ~at;
+            if (at < starts.Length)
+                anchors[id] = runStarts[starts[at]];
+        }
+        return doc;
+
+        void AddRun(TextRun run)
         {
             if (run.Control is not null)
             {
                 link = null;
-                para.Inlines.Add(RenderControl(run.Control, actions, charWidth, focusables));
-                continue;
+                para.Inlines.Add(RenderControl(run.Control, actions, charWidth, controls));
+                return;
             }
 
             InlineCollection target;
@@ -61,7 +88,6 @@ public static class PageRenderer
                     target.Add(Styled(parts[i], run.Tags, run.Link > 0));
             }
         }
-        return doc;
     }
 
     static Hyperlink MakeLink(int n, string url, IPageActions actions)

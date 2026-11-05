@@ -45,6 +45,7 @@ public partial class MainWindow : Window, IPageActions
     int _navStarts;            // counts page loads, to tell whether a form action loaded a new page
     bool _acting;              // a button/field action was just sent to the page
     Dictionary<string, IInputElement> _focusables = [];
+    Dictionary<string, System.Windows.Documents.TextElement> _anchors = [];
 
     int _theme;
     bool _crt = true;
@@ -157,8 +158,11 @@ public partial class MainWindow : Window, IPageActions
     void Go(string url, bool push = true)
     {
         var hash = url.IndexOf('#');
-        if (hash >= 0 && _page is not null && url[..hash] == _page.Url)
-            return;                                         // in-page anchor: nothing to load
+        if (hash >= 0 && _page is not null && url[..hash] == _page.Url.Split('#')[0])
+        {
+            ScrollToAnchor(url[(hash + 1)..]);              // in-page anchor: nothing to load
+            return;
+        }
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
         {
             SetStatus($"BAD ADDRESS: {url}");
@@ -182,6 +186,30 @@ public partial class MainWindow : Window, IPageActions
             _web.NavigateToString(InternalPages.Get(url));
         else
             _web.Navigate(url);
+    }
+
+    /// <summary>Scroll so the page section with this id is at the top of the screen.</summary>
+    void ScrollToAnchor(string fragment)
+    {
+        if (_scroll is null)
+            return;
+        var id = Uri.UnescapeDataString(fragment);
+        if (id.Length == 0 || id.Equals("top", StringComparison.OrdinalIgnoreCase))
+        {
+            _scroll.ScrollToTop();
+            return;
+        }
+        if (!_anchors.TryGetValue(id, out var target))
+        {
+            SetStatus($"SECTION NOT FOUND: {id}");
+            return;
+        }
+        var rect = target.ContentStart.GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward);
+        if (rect.IsEmpty)
+            target.BringIntoView();
+        else
+            _scroll.ScrollToVerticalOffset(_scroll.VerticalOffset + rect.Top - 4);
+        Viewer.Focus();
     }
 
     void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
@@ -270,9 +298,12 @@ public partial class MainWindow : Window, IPageActions
                                      r.GetArrayLength() > 3 ? ParseControl(r[3]) : null))
             .ToList();
         var links = root.GetProperty("links").EnumerateArray().Select(l => l.GetString() ?? "").ToList();
+        var anchors = root.TryGetProperty("anchors", out var a)
+            ? a.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetInt32())
+            : [];
         if (title.Length == 0)
             title = Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Host.Length > 0 ? uri.Host : url;
-        return new Page { Url = url, Title = title, Runs = runs, Links = links };
+        return new Page { Url = url, Title = title, Runs = runs, Links = links, Anchors = anchors };
     }
 
     static PageControl ParseControl(JsonElement c)
@@ -318,7 +349,10 @@ public partial class MainWindow : Window, IPageActions
         Title = $"{page.Title} - TextBrowser";
 
         var offset = _scroll?.VerticalOffset ?? 0;
-        Viewer.Document = PageRenderer.Render(page, this, CharWidth(), out _focusables);
+        var doc = PageRenderer.Render(page, this, CharWidth(), out _focusables, out _anchors);
+        doc.FontFamily = FontFamily;                        // documents don't inherit the window font
+        doc.FontSize = FontSize;
+        Viewer.Document = doc;
         if (_scroll is null)
         {
             Viewer.ApplyTemplate();
