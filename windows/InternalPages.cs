@@ -64,9 +64,16 @@ public static class InternalPages
           UP/DOWN, PGUP/PGDN,
           SPACE, HOME, END     SCROLL
         </pre>
+        <h3>Forms</h3>
+        <pre>
+          ____________         TEXT FIELD: CLICK OR TAB TO IT, TYPE, ENTER TO SUBMIT
+          [ SEARCH ]           BUTTON: CLICK, OR TAB TO IT AND PRESS ENTER
+          [X]  (*)             CHECK BOX / OPTION: CLICK OR ENTER TO CHANGE
+          CHOICE  &#x25BC;            DROP-DOWN: CLICK, OR TAB TO IT AND USE UP/DOWN
+        </pre>
         <p>Pages are loaded by the Microsoft Edge engine, but images, video, audio and fonts are
-        blocked and never downloaded. Only the text and links are shown.
-        Forms are not supported; use the URL bar to search.</p>
+        blocked and never downloaded. Only the text, links and form controls are shown.
+        File uploads are not supported.</p>
         <p><a href="about:home">Back to the home page</a></p>
         """;
 }

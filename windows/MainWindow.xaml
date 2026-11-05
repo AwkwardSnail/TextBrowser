@@ -30,6 +30,105 @@
       </Style.Triggers>
     </Style>
 
+    <!-- Form fields on pages: an underlined input line that brightens when focused. -->
+    <ControlTemplate x:Key="FieldTemplate" TargetType="Control">
+      <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource Dim}"
+              BorderThickness="0,0,0,1" Padding="2,0">
+        <ScrollViewer x:Name="PART_ContentHost" Focusable="False"
+                      HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+      </Border>
+      <ControlTemplate.Triggers>
+        <Trigger Property="IsKeyboardFocusWithin" Value="True">
+          <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Fg}"/>
+          <Setter TargetName="Bd" Property="BorderThickness" Value="0,0,0,2"/>
+        </Trigger>
+      </ControlTemplate.Triggers>
+    </ControlTemplate>
+    <Style x:Key="FieldBox" TargetType="TextBox">
+      <Setter Property="Foreground" Value="{DynamicResource Bright}"/>
+      <Setter Property="CaretBrush" Value="{DynamicResource Fg}"/>
+      <Setter Property="SelectionBrush" Value="{DynamicResource Fg}"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template" Value="{StaticResource FieldTemplate}"/>
+    </Style>
+    <Style x:Key="FieldPassword" TargetType="PasswordBox">
+      <Setter Property="Foreground" Value="{DynamicResource Bright}"/>
+      <Setter Property="CaretBrush" Value="{DynamicResource Fg}"/>
+      <Setter Property="SelectionBrush" Value="{DynamicResource Fg}"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template" Value="{StaticResource FieldTemplate}"/>
+    </Style>
+
+    <!-- Drop-down menus: a boxed choice with a phosphor list underneath. -->
+    <Style x:Key="FieldCombo" TargetType="ComboBox">
+      <Setter Property="Foreground" Value="{DynamicResource Bright}"/>
+      <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ComboBox">
+            <Border x:Name="Bd" Background="Transparent" BorderBrush="{DynamicResource Dim}" BorderThickness="1">
+              <Grid>
+                <ToggleButton Focusable="False" ClickMode="Press"
+                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                  <ToggleButton.Template>
+                    <ControlTemplate TargetType="ToggleButton">
+                      <Border Background="Transparent"/>
+                    </ControlTemplate>
+                  </ToggleButton.Template>
+                </ToggleButton>
+                <DockPanel Margin="6,0,4,0" IsHitTestVisible="False">
+                  <TextBlock DockPanel.Dock="Right" Text=" &#x25BC;" Foreground="{TemplateBinding Foreground}"/>
+                  <ContentPresenter Content="{TemplateBinding SelectionBoxItem}" VerticalAlignment="Center"
+                                    TextElement.Foreground="{TemplateBinding Foreground}"/>
+                </DockPanel>
+                <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
+                       Focusable="False" PopupAnimation="None">
+                  <Border Background="{DynamicResource Bg}" BorderBrush="{DynamicResource Fg}" BorderThickness="1"
+                          MinWidth="{TemplateBinding ActualWidth}" MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                      <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/>
+                    </ScrollViewer>
+                  </Border>
+                </Popup>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource Fg}"/>
+                <Setter Property="Foreground" Value="{DynamicResource Bg}"/>
+              </Trigger>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource Fg}"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Setter Property="ItemContainerStyle">
+        <Setter.Value>
+          <Style TargetType="ComboBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource Fg}"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+              <Setter.Value>
+                <ControlTemplate TargetType="ComboBoxItem">
+                  <Border x:Name="Item" Background="Transparent" Padding="6,1">
+                    <ContentPresenter/>
+                  </Border>
+                  <ControlTemplate.Triggers>
+                    <Trigger Property="IsHighlighted" Value="True">
+                      <Setter TargetName="Item" Property="Background" Value="{DynamicResource Fg}"/>
+                      <Setter Property="Foreground" Value="{DynamicResource Bg}"/>
+                    </Trigger>
+                  </ControlTemplate.Triggers>
+                </ControlTemplate>
+              </Setter.Value>
+            </Setter>
+          </Style>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
     <!-- One dark line every 3 pixels. -->
     <DrawingBrush x:Key="Scanlines" TileMode="Tile" Viewport="0,0,1,3" ViewportUnits="Absolute"
                   Viewbox="0,0,1,3" ViewboxUnits="Absolute" Stretch="Fill">

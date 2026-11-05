@@ -13,7 +13,7 @@ using Microsoft.Web.WebView2.Core;
 
 namespace TextBrowser;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IPageActions
 {
     public const string Version = "2.0";
     const string AppName = "TEXTBROWSER";
@@ -42,6 +42,9 @@ public partial class MainWindow : Window
     string? _loadingUrl;
     string? _internalUrl;      // about: page being shown via NavigateToString
     readonly string _startUrl;
+    int _navStarts;            // counts page loads, to tell whether a form action loaded a new page
+    bool _acting;              // a button/field action was just sent to the page
+    Dictionary<string, IInputElement> _focusables = [];
 
     int _theme;
     bool _crt = true;
@@ -68,7 +71,7 @@ public partial class MainWindow : Window
         {
             if (e.Key == Key.Enter)
             {
-                Submit();
+                SubmitUrlBox();
                 e.Handled = true;
             }
         };
@@ -132,7 +135,14 @@ public partial class MainWindow : Window
         _web.WebResourceRequested += (_, args) =>
             args.Response = _env.CreateWebResourceResponse(null, 403, "Blocked", "");
 
-        _web.NewWindowRequested += (_, args) => args.Handled = true;   // no pop-ups
+        _web.NewWindowRequested += (_, args) =>
+        {
+            // No pop-ups, except a new window opened by a button the user pressed:
+            // that one replaces the current page instead.
+            args.Handled = true;
+            if (_acting)
+                Go(args.Uri);
+        };
         _web.NavigationStarting += OnNavigationStarting;
         _web.NavigationCompleted += OnNavigationCompleted;
         _web.DownloadStarting += OnDownloadStarting;
@@ -178,6 +188,7 @@ public partial class MainWindow : Window
     {
         if (e.IsRedirected)
             return;
+        _navStarts++;
         _activeNav = e.NavigationId;
         if (_loadingUrl is null)
         {
@@ -255,7 +266,8 @@ public partial class MainWindow : Window
                 "THIS TERMINAL DISPLAYS TEXT ONLY.");
 
         var runs = root.GetProperty("runs").EnumerateArray()
-            .Select(r => new TextRun(r[0].GetString() ?? "", r[1].GetString() ?? "", r[2].GetInt32()))
+            .Select(r => new TextRun(r[0].GetString() ?? "", r[1].GetString() ?? "", r[2].GetInt32(),
+                                     r.GetArrayLength() > 3 ? ParseControl(r[3]) : null))
             .ToList();
         var links = root.GetProperty("links").EnumerateArray().Select(l => l.GetString() ?? "").ToList();
         if (title.Length == 0)
@@ -263,11 +275,32 @@ public partial class MainWindow : Window
         return new Page { Url = url, Title = title, Runs = runs, Links = links };
     }
 
-    void ShowPage(Page page)
+    static PageControl ParseControl(JsonElement c)
+    {
+        string Text(string name) =>
+            c.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString()! : "";
+        int Number(string name) =>
+            c.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+        var options = c.TryGetProperty("options", out var o)
+            ? o.EnumerateArray().Select(x => x.GetString() ?? "").ToList()
+            : [];
+        var isChecked = c.TryGetProperty("checked", out var ch) && ch.ValueKind == JsonValueKind.True;
+        return new PageControl(Text("id"), Text("kind"), Text("value"), Text("placeholder"), Number("size"),
+                               options, Number("index"), Text("label"), isChecked);
+    }
+
+    /// <summary>Show a page. In place means the same page changed after a form action: keep the
+    /// history, the scroll position and the keyboard focus.</summary>
+    void ShowPage(Page page, bool inPlace = false, string? focusId = null)
     {
         _spinner.Stop();
         _loadingUrl = null;
-        if (_pushPending)
+        if (inPlace)
+        {
+            if (_pos >= 0 && _pos < _history.Count)
+                _history[_pos] = page.Url;
+        }
+        else if (_pushPending)
         {
             _history.RemoveRange(_pos + 1, _history.Count - _pos - 1);
             _history.Add(page.Url);
@@ -284,7 +317,8 @@ public partial class MainWindow : Window
         HeaderText.Text = $"{AppName} v{Version}  ::  {page.Title.ToUpperInvariant()}";
         Title = $"{page.Title} - TextBrowser";
 
-        Viewer.Document = PageRenderer.Render(page, Follow, HoverLink, ShowPageStatus);
+        var offset = _scroll?.VerticalOffset ?? 0;
+        Viewer.Document = PageRenderer.Render(page, this, CharWidth(), out _focusables);
         if (_scroll is null)
         {
             Viewer.ApplyTemplate();
@@ -292,12 +326,89 @@ public partial class MainWindow : Window
             if (_scroll is not null)
                 _scroll.ScrollChanged += (_, _) => UpdateScrollText();
         }
-        _scroll?.ScrollToTop();
-        Viewer.Focus();
         ShowPageStatus();
+        if (!inPlace)
+        {
+            _scroll?.ScrollToTop();
+            Viewer.Focus();
+            return;
+        }
+        // Wait for the new document's layout before restoring the view.
+        Dispatcher.BeginInvoke(() =>
+        {
+            _scroll?.ScrollToVerticalOffset(offset);
+            if (focusId is not null && _focusables.TryGetValue(focusId, out var element))
+                Keyboard.Focus(element);
+            else
+                Viewer.Focus();
+        }, DispatcherPriority.Loaded);
     }
 
-    void Submit()
+    // ------------------------------------------------------------------
+    // Links and form controls (IPageActions)
+    // ------------------------------------------------------------------
+
+    public void Describe(string status) => SetStatus(status);
+
+    public void EndDescribe() => ShowPageStatus();
+
+    public void SetText(string id, string value) =>
+        _ = RunOnElement(id, $"el.value = {JsonSerializer.Serialize(value)}; " +
+                             "el.dispatchEvent(new Event('input', { bubbles: true }));");
+
+    /// <summary>Enter in a text field: submit its form, as a normal browser would.</summary>
+    public void Submit(string id, string value) =>
+        Act(id, $"el.value = {JsonSerializer.Serialize(value)}; " +
+                "el.dispatchEvent(new Event('input', { bubbles: true })); " +
+                "if (el.form) { el.form.requestSubmit ? el.form.requestSubmit() : el.form.submit(); } " +
+                "else { for (const t of ['keydown', 'keypress', 'keyup']) " +
+                "el.dispatchEvent(new KeyboardEvent(t, { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true })); }");
+
+    public void Click(string id) => Act(id, "el.click();");
+
+    public void Select(string id, int index) =>
+        Act(id, $"el.selectedIndex = {index}; " +
+                "el.dispatchEvent(new Event('input', { bubbles: true })); " +
+                "el.dispatchEvent(new Event('change', { bubbles: true }));");
+
+    /// <summary>Run script against one control in the live page; el is the control.</summary>
+    async Task RunOnElement(string id, string body)
+    {
+        if (_web is null)
+            return;
+        try
+        {
+            await _web.ExecuteScriptAsync(
+                $"(() => {{ const el = document.querySelector('[data-tb-id=\"{id}\"]'); if (!el) return false; {body} return true; }})()");
+        }
+        catch (Exception)
+        {
+            // The page went away while the script ran; whatever replaced it is shown instead.
+        }
+    }
+
+    /// <summary>Press a button, submit a field or change a drop-down. If that loads a new page it
+    /// is shown as usual (and goes into history); if the page just changes, redraw it in place.</summary>
+    async void Act(string id, string body)
+    {
+        if (_web is null || _page is null)
+            return;
+        var starts = _navStarts;
+        _pushPending = true;
+        _acting = true;
+        SetStatus("WORKING ...");
+        await RunOnElement(id, body);
+        await Task.Delay(700);
+        _acting = false;
+        if (_navStarts != starts || _loadingUrl is not null)
+            return;                                         // a new page is loading
+        _pushPending = false;
+        var page = await Extract();
+        if (page is not null && _navStarts == starts && _loadingUrl is null)
+            ShowPage(page, inPlace: true, focusId: id);
+    }
+
+    void SubmitUrlBox()
     {
         var text = UrlBox.Text.Trim();
         if (text.Length == 0)
@@ -320,7 +431,7 @@ public partial class MainWindow : Window
         return SearchUrl + Uri.EscapeDataString(entry);
     }
 
-    void Follow(int n)
+    public void Follow(int n)
     {
         if (_page is null || n < 1 || n > _page.Links.Count)
         {
@@ -370,7 +481,7 @@ public partial class MainWindow : Window
     {
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var mods = Keyboard.Modifiers;
-        var inUrlBox = UrlBox.IsKeyboardFocusWithin;
+        var typing = IsTyping();
         Action? action = (key, mods) switch
         {
             (Key.L, ModifierKeys.Control) or (Key.F6, _) => FocusUrlBox,
@@ -384,7 +495,7 @@ public partial class MainWindow : Window
             (Key.F11, _) or (Key.Enter, ModifierKeys.Alt) => ToggleFullScreen,
             (Key.Escape, _) when _fullScreen => ToggleFullScreen,
             (Key.Escape, _) => Stop,
-            _ when inUrlBox || _scroll is null => null,
+            _ when typing || _scroll is null => null,
             (Key.Back, _) => Back,
             (Key.Up, ModifierKeys.None) => _scroll.LineUp,
             (Key.Down, ModifierKeys.None) => _scroll.LineDown,
@@ -404,7 +515,7 @@ public partial class MainWindow : Window
     void OnPreviewTextInput(object sender, TextCompositionEventArgs e)
     {
         // Typing a digit on the page starts a link number in the URL bar.
-        if (!UrlBox.IsKeyboardFocusWithin && e.Text.Length == 1 && char.IsAsciiDigit(e.Text[0]))
+        if (!IsTyping() && e.Text.Length == 1 && char.IsAsciiDigit(e.Text[0]))
         {
             UrlBox.Text = e.Text;
             UrlBox.Focus();
@@ -412,6 +523,12 @@ public partial class MainWindow : Window
             e.Handled = true;
         }
     }
+
+    /// <summary>True while the keyboard is in the URL bar or a field or drop-down on the page,
+    /// where keys like Backspace, Space and digits must reach the control.</summary>
+    static bool IsTyping() =>
+        Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase or PasswordBox
+            or ComboBox or ComboBoxItem;
 
     void FocusUrlBox()
     {
@@ -491,12 +608,9 @@ public partial class MainWindow : Window
         var rect = UrlBox.GetRectFromCharacterIndex(UrlBox.CaretIndex);
         if (rect.IsEmpty)
             return;
-        var charWidth = new FormattedText("M", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
-            new Typeface(UrlBox.FontFamily, UrlBox.FontStyle, UrlBox.FontWeight, UrlBox.FontStretch),
-            UrlBox.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(this).PixelsPerDip).Width;
         Canvas.SetLeft(BlockCaret, rect.Left);
         Canvas.SetTop(BlockCaret, rect.Top);
-        BlockCaret.Width = charWidth;
+        BlockCaret.Width = CharWidth();
         BlockCaret.Height = rect.Height;
         BlockCaret.Opacity = 1;
         BlockCaret.Visibility = Visibility.Visible;
@@ -520,11 +634,11 @@ public partial class MainWindow : Window
         SetStatus($"{n} LINKS  -  TAB OR CLICK TO SELECT  -  TYPE A NUMBER TO JUMP  -  F1 HELP");
     }
 
-    void HoverLink(int n)
-    {
-        if (_page is not null && n <= _page.Links.Count)
-            SetStatus($"[{n}] {_page.Links[n - 1]}");
-    }
+    /// <summary>Width of one character of the terminal font.</summary>
+    double CharWidth() =>
+        new FormattedText("M", CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+            new Typeface(FontFamily, FontStyle, FontWeight, FontStretch),
+            FontSize, Brushes.Black, VisualTreeHelper.GetDpi(this).PixelsPerDip).Width;
 
     void ShowLoadingStatus()
     {

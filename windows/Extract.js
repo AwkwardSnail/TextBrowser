@@ -1,16 +1,21 @@
 // Runs inside the hidden Chromium page after it loads. Walks the rendered DOM
 // and returns only the visible text, as styled runs, plus a numbered link list.
-// Result: { url, title, runs: [[text, "tags", linkNumber], ...], links: [url, ...] }
+// Result: { url, title, runs: [[text, "tags", linkNumber, control?], ...], links: [url, ...] }
 // or { url, title, nonText: contentType } for documents that aren't text.
+// Form controls become runs with empty text and a control object; the element is
+// marked with data-tb-id so the app can type into it, click it or change it later.
 (() => {
   const contentType = document.contentType || "text/html";
   if (!/^text\/|[+\/](xml|json)$/.test(contentType)) {
     return { url: location.href, title: document.title, nonText: contentType };
   }
 
-  // Everything inside these elements is dropped (media, scripts, form fields...).
+  // Everything inside these elements is dropped (media, scripts...).
   const SKIP = new Set(["SCRIPT", "STYLE", "NOSCRIPT", "SVG", "MATH", "VIDEO", "AUDIO",
-    "IFRAME", "CANVAS", "OBJECT", "EMBED", "TEMPLATE", "SELECT", "TEXTAREA", "INPUT", "HEAD"]);
+    "IFRAME", "CANVAS", "OBJECT", "EMBED", "TEMPLATE", "HEAD"]);
+  const CONTROLS = new Set(["INPUT", "TEXTAREA", "SELECT", "BUTTON"]);
+  const TEXT_TYPES = new Set(["text", "search", "email", "url", "tel", "number", "password",
+    "date", "time", "datetime-local", "month", "week"]);
   const HEADINGS = new Set(["H1", "H2", "H3", "H4", "H5", "H6"]);
   // Block elements start on a new line; PARA also get a blank line around them.
   const PARA = new Set([...HEADINGS, "P", "PRE", "BLOCKQUOTE", "TABLE", "FIGURE", "DL", "UL", "OL"]);
@@ -44,8 +49,8 @@
     return [[...new Set(styles)].join(" "), n];
   }
 
-  function write(text, fixed) {
-    if (!text) return;
+  function write(text, fixed, control) {
+    if (!text && !control) return;
     if (wantNl) {
       const missing = wantNl - trailNl;
       if (runs.length && missing > 0) {
@@ -55,9 +60,15 @@
       }
       wantNl = 0;
     }
-    if (bullet && text.trim()) {
+    if (bullet && (control || text.trim())) {
       runs.push([bullet, "dim", 0]);
       bullet = "";
+    }
+    if (control) {
+      runs.push(["", "", 0, control]);
+      trailNl = 0;
+      last = "#";
+      return;
     }
     const [tags, n] = fixed || tagsFor(text);
     runs.push([text, tags, n]);
@@ -140,6 +151,38 @@
     write(t);
   }
 
+  const clean = s => (s || "").replace(/\s+/g, " ").trim();
+
+  function control(tag, el) {
+    // Fully transparent controls are usually tricks behind custom menus; skip them.
+    if (el.disabled || !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return;
+    const type = tag === "INPUT" ? (el.type || "text").toLowerCase() : tag.toLowerCase();
+    const placeholder = clean(el.placeholder || el.getAttribute("aria-label"));
+    let c;
+    if (tag === "SELECT") {
+      c = { kind: "select", options: [...el.options].map(o => clean(o.text)), index: el.selectedIndex };
+    } else if (tag === "TEXTAREA") {
+      c = { kind: "textarea", value: el.value, placeholder, size: el.cols || 0 };
+    } else if (TEXT_TYPES.has(type)) {
+      c = { kind: type === "password" ? "password" : "text", value: el.value, placeholder,
+            size: el.hasAttribute("size") ? el.size : 0 };
+    } else if (type === "checkbox" || type === "radio") {
+      c = { kind: type, checked: el.checked };
+    } else if (tag === "BUTTON" || ["submit", "button", "reset", "image"].includes(type)) {
+      const label = clean(tag === "BUTTON" ? el.innerText : el.value || el.alt)
+        || clean(el.getAttribute("aria-label") || el.title) || (type === "submit" ? "Submit" : "");
+      if (!label) return;                 // icon-only button with no name: nothing to show
+      c = { kind: "button", label };
+    } else {
+      return;                             // hidden fields, file uploads, sliders...
+    }
+    window.__tbNextId = window.__tbNextId || 0;
+    if (!el.dataset.tbId) el.dataset.tbId = String(++window.__tbNextId);
+    c.id = el.dataset.tbId;
+    if (!wantNl && last !== " " && last !== "\n") write(" ", ["", 0]);
+    write("", null, c);
+  }
+
   function walk(node) {
     if (node.nodeType === Node.TEXT_NODE) {
       text(node.data);
@@ -152,6 +195,10 @@
     // elements have no box of their own but their children are still shown.
     if (node.checkVisibility && !node.checkVisibility({ checkVisibilityCSS: true })
         && getComputedStyle(node).display !== "contents") return;
+    if (CONTROLS.has(tag)) {
+      control(tag, node);
+      return;
+    }
     start(tag, node);
     for (const child of node.childNodes) walk(child);
     end(tag, node);
