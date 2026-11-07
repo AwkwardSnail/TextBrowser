@@ -7,6 +7,8 @@ Everything needed to build the Store package is in this folder:
 | `make-assets.ps1` | Draws the icon (a green `>` prompt and block cursor on a dark screen) at every size (`Assets\`), plus `TextBrowser.ico` for the .exe and window |
 | `AppxManifest.template.xml` | The package description (name, icons, capabilities) |
 | `build-msix.ps1` | Publishes the app and builds `windows\dist\TextBrowser_<version>.msixbundle` (x64 + ARM64) |
+| `StoreScreenshots\` | Four 1600×900 screenshots for the listing: a Wikipedia article, *Alice's Adventures in Wonderland* in amber, a DuckDuckGo search, the home page |
+| `capture-window.ps1` | Sizes the running app's window to 1600×900 and saves it as a screenshot (`-Name 5-something`) |
 
 ## 1. Things only you can do (Partner Center)
 
@@ -41,7 +43,7 @@ that comes with Windows 10 and 11.
   *"TextBrowser is a WPF desktop application packaged with MSIX; runFullTrust is required for desktop apps."*
 - **Web browser policy (10.2.1):** TextBrowser loads pages with Microsoft Edge WebView2 (Chromium),
   as the policy requires for apps that browse the web. Mention this in the notes for certification.
-- **Store listing:** description (draft below), screenshots of the app, category
+- **Store listing:** description (draft below), the screenshots from `StoreScreenshots\`, category
   **Productivity** (or Utilities & tools), a few search terms (text browser, retro, terminal, reader).
 - **Privacy policy URL:** <https://awkwardsnail.com.au/privacy.html> (it already covers TextBrowser).
 - **Age ratings:** answer the questionnaire. A web browser gives unrestricted internet access,
