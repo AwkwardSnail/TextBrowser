@@ -128,17 +128,6 @@
         </Setter.Value>
       </Setter>
     </Style>
-
-    <!-- One dark line every 3 pixels. -->
-    <DrawingBrush x:Key="Scanlines" TileMode="Tile" Viewport="0,0,1,3" ViewportUnits="Absolute"
-                  Viewbox="0,0,1,3" ViewboxUnits="Absolute" Stretch="Fill">
-      <DrawingBrush.Drawing>
-        <DrawingGroup>
-          <GeometryDrawing Brush="#00000000" Geometry="M0,0 H1 V2 H0 Z"/>
-          <GeometryDrawing Brush="#000000" Geometry="M0,2 H1 V3 H0 Z"/>
-        </DrawingGroup>
-      </DrawingBrush.Drawing>
-    </DrawingBrush>
   </Window.Resources>
 
   <!-- The monitor: a dark bezel around a rounded phosphor screen. -->
@@ -198,9 +187,7 @@
         </Border>
       </Grid>
 
-      <!-- CRT effects (F3): scanlines and darkened corners. -->
-      <Rectangle x:Name="ScanlineLayer" Fill="{StaticResource Scanlines}" Opacity="0.22"
-                 RadiusX="13" RadiusY="13" IsHitTestVisible="False"/>
+      <!-- CRT effect (F3, with the glow): darkened corners. -->
       <Rectangle x:Name="VignetteLayer" RadiusX="13" RadiusY="13" IsHitTestVisible="False">
         <Rectangle.Fill>
           <RadialGradientBrush RadiusX="0.75" RadiusY="0.75">

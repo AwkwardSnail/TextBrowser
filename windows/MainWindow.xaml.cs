@@ -602,7 +602,7 @@ public partial class MainWindow : Window, IPageActions
     {
         _crt = !_crt;
         Screen.Effect = _crt ? _glow : null;
-        ScanlineLayer.Visibility = VignetteLayer.Visibility = _crt ? Visibility.Visible : Visibility.Collapsed;
+        VignetteLayer.Visibility = _crt ? Visibility.Visible : Visibility.Collapsed;
         SetStatus(_crt ? "CRT EFFECTS: ON" : "CRT EFFECTS: OFF");
     }
 

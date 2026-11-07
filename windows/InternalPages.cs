@@ -60,7 +60,7 @@ public static class InternalPages
           ESC                  LEAVE FULL SCREEN / CANCEL LOADING
           F1                   THIS HELP PAGE
           F2                   CHANGE PHOSPHOR COLOUR (GREEN / AMBER / WHITE)
-          F3                   CRT EFFECTS ON / OFF (GLOW AND SCANLINES)
+          F3                   CRT EFFECTS ON / OFF (GLOW AND DARK CORNERS)
           UP/DOWN, PGUP/PGDN,
           SPACE, HOME, END     SCROLL
         </pre>
