@@ -160,7 +160,8 @@ public partial class MainWindow : Window, IPageActions
         var hash = url.IndexOf('#');
         if (hash >= 0 && _page is not null && url[..hash] == _page.Url.Split('#')[0])
         {
-            ScrollToAnchor(url[(hash + 1)..]);              // in-page anchor: nothing to load
+            SetUrlBox(url);                                 // in-page anchor: nothing to load
+            ScrollToAnchor(url[(hash + 1)..]);
             return;
         }
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
@@ -188,28 +189,55 @@ public partial class MainWindow : Window, IPageActions
             _web.Navigate(url);
     }
 
-    /// <summary>Scroll so the page section with this id is at the top of the screen.</summary>
-    void ScrollToAnchor(string fragment)
+    /// <summary>Scroll so the page section with this id is at the top of the screen.
+    /// Quiet: say nothing if the page has no such section (used when a page loads).</summary>
+    void ScrollToAnchor(string fragment, bool quiet = false)
     {
-        if (_scroll is null)
-            return;
-        var id = Uri.UnescapeDataString(fragment);
-        if (id.Length == 0 || id.Equals("top", StringComparison.OrdinalIgnoreCase))
-        {
-            _scroll.ScrollToTop();
-            return;
-        }
-        if (!_anchors.TryGetValue(id, out var target))
-        {
-            SetStatus($"SECTION NOT FOUND: {id}");
-            return;
-        }
-        var rect = target.ContentStart.GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward);
-        if (rect.IsEmpty)
-            target.BringIntoView();
-        else
-            _scroll.ScrollToVerticalOffset(_scroll.VerticalOffset + rect.Top - 4);
+        // Move the focus first, and scroll once that (and a clicked link's own focus
+        // change) has settled. Scrolling in the middle of it left some lines undrawn.
         Viewer.Focus();
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_scroll is null)
+                return;
+            var id = Uri.UnescapeDataString(fragment);
+            if (id.Length == 0 || id.Equals("top", StringComparison.OrdinalIgnoreCase))
+            {
+                _scroll.ScrollToTop();
+                return;
+            }
+            if (!_anchors.TryGetValue(id, out var target))
+            {
+                if (!quiet)
+                    SetStatus($"SECTION NOT FOUND: {id}");
+                return;
+            }
+            // Bring it into view first, so that part of the page is laid out and its
+            // position is exact, then line it up with the top of the screen.
+            target.BringIntoView();
+            Dispatcher.BeginInvoke(() =>
+            {
+                var rect = target.ContentStart.GetCharacterRect(System.Windows.Documents.LogicalDirection.Forward);
+                if (!rect.IsEmpty)
+                    _scroll.ScrollToVerticalOffset(_scroll.VerticalOffset + rect.Top - 4);
+            }, DispatcherPriority.Background);
+            Dispatcher.BeginInvoke(RedrawView, DispatcherPriority.ApplicationIdle);
+        }, DispatcherPriority.Background);
+    }
+
+    /// <summary>After a jump, a clicked link stops being under the mouse and its highlight is
+    /// redrawn off screen, which can leave a stretch of lines undrawn. Scrolling well away and
+    /// straight back (in one layout pass, so nothing flickers) draws them all again.</summary>
+    void RedrawView()
+    {
+        if (_scroll is null || _scroll.ScrollableHeight <= 0)
+            return;
+        var offset = _scroll.VerticalOffset;
+        var away = offset > _scroll.ScrollableHeight / 2 ? 0 : _scroll.ScrollableHeight;
+        _scroll.ScrollToVerticalOffset(away);
+        Viewer.UpdateLayout();
+        _scroll.ScrollToVerticalOffset(offset);
+        Viewer.UpdateLayout();
     }
 
     void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
@@ -365,6 +393,10 @@ public partial class MainWindow : Window, IPageActions
         {
             _scroll?.ScrollToTop();
             Viewer.Focus();
+            // An address ending in #section opens at that section.
+            var hash = page.Url.IndexOf('#');
+            if (hash >= 0 && hash < page.Url.Length - 1)
+                ScrollToAnchor(page.Url[(hash + 1)..], quiet: true);
             return;
         }
         // Wait for the new document's layout before restoring the view.
