@@ -45,3 +45,19 @@ Needs the .NET 10 SDK and the WebView2 runtime (built into Windows 11):
 ```bash
 dotnet run --project windows
 ```
+
+## Privacy
+
+TextBrowser collects no data and has no accounts, analytics or adverts. As a web
+browser it connects to the websites you visit, and to DuckDuckGo Lite when you search.
+It never contacts any Awkward Snail server. See the
+[privacy policy](https://awkwardsnail.com.au/privacy.html).
+
+## Licence
+
+Made by [aWkward sn@ail](https://awkwardsnail.com.au): calm, simple tools that stay
+the way you left them.
+
+The code is under the [MIT licence](LICENSE), so you're welcome to fork it. The
+Awkward Snail name and icon are not covered by the licence: please don't use them
+for your fork.
