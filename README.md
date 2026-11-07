@@ -46,6 +46,9 @@ Needs the .NET 10 SDK and the WebView2 runtime (built into Windows 11):
 dotnet run --project windows
 ```
 
+`windows\Packaging\` holds the icon, the MSIX manifest and the scripts that build the
+Microsoft Store package; see its [README](windows/Packaging/README.md).
+
 ## Privacy
 
 TextBrowser collects no data and has no accounts, analytics or adverts. As a web
