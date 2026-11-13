@@ -1,17 +1,16 @@
 # Builds TextBrowser as MSIX packages for the Microsoft Store.
 #
-#   .\build-msix.ps1                       # Akward Snail identity, version 2.0.0.0
+#   .\build-msix.ps1                       # aWkward Snail identity, version 2.0.0.0
 #   .\build-msix.ps1 -Version 2.0.1.0      # an update
 #
-# The identity defaults are Akward Snail's Partner Center values. Check them
-# against the Product identity page once the app name is reserved, and pass
-# -IdentityName if Partner Center shows a different one. Store uploads don't
-# need signing: the Store signs the package. -SignCert is only for installing
-# a test build locally.
+# The identity defaults are the Partner Center values for SimpleWeb Text Browser
+# (Product identity page). If Partner Center ever shows different ones, pass
+# them as parameters. Store uploads don't need signing: the Store signs the
+# package. -SignCert is only for installing a test build locally.
 param(
-    [string]$IdentityName = 'AkwardSnail.TextBrowser',
+    [string]$IdentityName = 'AkwardSnail.SimpleWebTextBrowser',
     [string]$Publisher = 'CN=A55585C2-FE40-4ED1-9B77-46466AE9C532',
-    [string]$PublisherDisplayName = 'Akward Snail',
+    [string]$PublisherDisplayName = 'aWkward Snail',
     [string]$Version = '2.0.0.0',
     [string[]]$Architectures = @('x64', 'arm64'),
     [string]$Out = (Join-Path $PSScriptRoot '..\dist'),

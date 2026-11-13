@@ -1,4 +1,4 @@
-# Publishing TextBrowser to the Microsoft Store
+# Publishing TextBrowser (SimpleWeb Text Browser) to the Microsoft Store
 
 Everything needed to build the Store package is in this folder:
 
@@ -12,16 +12,15 @@ Everything needed to build the Store package is in this folder:
 
 ## 1. Things only you can do (Partner Center)
 
-1. **Reserve the app name.** Apps and games → New product → MSIX or PWA app → enter **TextBrowser**.
-   Store names are unique; if it's taken, pick another and change `DisplayName` (in both places)
-   in `AppxManifest.template.xml` to match.
-2. **Check the identity values.** Product management → Product identity. `build-msix.ps1` already
-   uses Akward Snail's values:
-   - `Package/Identity/Name`: `AkwardSnail.TextBrowser`
-   - `Package/Identity/Publisher`: `CN=A55585C2-FE40-4ED1-9B77-46466AE9C532`
-   - `Package/Properties/PublisherDisplayName`: `Akward Snail`
+The app is reserved in Partner Center as **SimpleWeb Text Browser** (Store ID `9MVZ3GBZG15T`).
+The manifest's `DisplayName` (three places in `AppxManifest.template.xml`) must match that name,
+and `build-msix.ps1` uses the values from the Product identity page:
 
-   If the page shows a different name, pass it with `-IdentityName`.
+- `Package/Identity/Name`: `AkwardSnail.SimpleWebTextBrowser`
+- `Package/Identity/Publisher`: `CN=A55585C2-FE40-4ED1-9B77-46466AE9C532`
+- `Package/Properties/PublisherDisplayName`: `aWkward Snail`
+
+Copy these from Partner Center exactly if they ever change; never "correct" the spelling.
 
 ## 2. Build the Store package
 
@@ -75,4 +74,4 @@ that comes with Windows 10 and 11.
   Add-AppxPackage -Register "..\dist\layout-x64\AppxManifest.xml"
   ```
   Remove the test install afterwards from Settings → Apps, or with
-  `Get-AppxPackage AkwardSnail.TextBrowser | Remove-AppxPackage`.
+  `Get-AppxPackage AkwardSnail.SimpleWebTextBrowser | Remove-AppxPackage`.
