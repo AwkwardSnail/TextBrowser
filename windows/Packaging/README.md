@@ -7,8 +7,10 @@ Everything needed to build the Store package is in this folder:
 | `make-assets.ps1` | Draws the icon (a green `>` prompt and block cursor on a dark screen) at every size (`Assets\`), plus `TextBrowser.ico` for the .exe and window |
 | `AppxManifest.template.xml` | The package description (name, icons, capabilities) |
 | `build-msix.ps1` | Publishes the app and builds `windows\dist\TextBrowser_<version>.msixbundle` (x64 + ARM64) |
-| `StoreScreenshots\` | Four 1600×900 screenshots for the listing: a Wikipedia article, *Alice's Adventures in Wonderland* in amber, a DuckDuckGo search, the home page |
-| `capture-window.ps1` | Sizes the running app's window to 1600×900 and saves it as a screenshot (`-Name 5-something`) |
+| `StoreListing.md` | Every Store listing field, ready to copy into Partner Center |
+| `StoreLogos\` | The 300Ã—300 app tile icon and 2160Ã—2160 box art for the listing (made by `make-assets.ps1`) |
+| `StoreScreenshots\` | Four 1600Ã—900 screenshots for the listing: a Wikipedia article, *Alice's Adventures in Wonderland* in amber, a DuckDuckGo search, the home page |
+| `capture-window.ps1` | Sizes the running app's window to 1600Ã—900 and saves it as a screenshot (`-Name 5-something`) |
 
 ## 1. Things only you can do (Partner Center)
 
@@ -42,24 +44,12 @@ that comes with Windows 10 and 11.
   *"TextBrowser is a WPF desktop application packaged with MSIX; runFullTrust is required for desktop apps."*
 - **Web browser policy (10.2.1):** TextBrowser loads pages with Microsoft Edge WebView2 (Chromium),
   as the policy requires for apps that browse the web. Mention this in the notes for certification.
-- **Store listing:** description (draft below), the screenshots from `StoreScreenshots\`, category
-  **Productivity** (or Utilities & tools), a few search terms (text browser, retro, terminal, reader).
+- **Store listing:** copy each field from [`StoreListing.md`](StoreListing.md); upload the screenshots
+  from `StoreScreenshots\` and the logos from `StoreLogos\`. Category **Productivity** (or Utilities & tools).
 - **Privacy policy URL:** <https://awkwardsnail.com.au/privacy.html> (it already covers TextBrowser).
 - **Age ratings:** answer the questionnaire. A web browser gives unrestricted internet access,
   so expect an older rating than the other apps.
 - **Pricing and availability:** one low price, the markets you want.
-
-### Draft listing text
-
-> **The web, just the words.** TextBrowser shows web pages as plain text on a glowing
-> 1980s-style terminal screen. No pictures, video, sound, adverts or pop-ups: only the text,
-> the links and simple forms.
->
-> - Links are numbered; click one, or type its number
-> - Search, fill in text boxes, press buttons and choose from drop-down menus
-> - Green, amber or white phosphor, with full screen for distraction-free reading
-> - Images, video, audio and fonts are blocked before they download
-> - No accounts, tracking or analytics
 
 ## 4. Optional checks before submitting
 
@@ -68,10 +58,10 @@ that comes with Windows 10 and 11.
   & "C:\Program Files (x86)\Windows Kits\10\App Certification Kit\appcert.exe" test `
       -appxpackagepath "..\dist\TextBrowser_2.0.0.0.msixbundle" -reportoutputpath "$env:TEMP\wack.xml"
   ```
-- **Install the package yourself.** With *Developer Mode* on (Settings → System → For developers),
+- **Install the package yourself.** With *Developer Mode* on (Settings â†’ System â†’ For developers),
   register the unpacked folder:
   ```powershell
   Add-AppxPackage -Register "..\dist\layout-x64\AppxManifest.xml"
   ```
-  Remove the test install afterwards from Settings → Apps, or with
+  Remove the test install afterwards from Settings â†’ Apps, or with
   `Get-AppxPackage AkwardSnail.SimpleWebTextBrowser | Remove-AppxPackage`.

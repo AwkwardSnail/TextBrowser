@@ -92,6 +92,12 @@ foreach ($size in 16, 24, 32, 48, 256) {
     Save-Icon "$Out\Square44x44Logo.targetsize-${size}_altform-unplated.png" $size $size 'tile' (Get-SmallScale $size)
 }
 
+# Store listing logos (uploaded in Partner Center, not packaged with the app).
+$storeLogos = Join-Path $PSScriptRoot 'StoreLogos'
+New-Item -ItemType Directory -Force $storeLogos | Out-Null
+Save-Icon "$storeLogos\AppTileIcon-300x300.png" 300 300 'tile'
+Save-Icon "$storeLogos\BoxArt-2160x2160.png" 2160 2160 'full' 0.7
+
 # TextBrowser.ico for the .exe and the window: PNG images inside an .ico container.
 $sizes = 16, 20, 24, 32, 40, 48, 64, 256
 $images = foreach ($size in $sizes) {
