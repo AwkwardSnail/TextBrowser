@@ -79,8 +79,9 @@ Upload in this order from `StoreScreenshots\`:
 
 ## Store logos
 
-- **1:1 App tile icon (300 × 300):** `StoreLogos\AppTileIcon-300x300.png`
+- **9:16 Poster art (1440 × 2160):** `StoreLogos\PosterArt-1440x2160.png`
 - **1:1 Box art (2160 × 2160):** `StoreLogos\BoxArt-2160x2160.png`
+- **1:1 App tile icon (300 × 300):** `StoreLogos\AppTileIcon-300x300.png`
 
 (Tick "For customers on Windows 10 and Windows 11 devices, display only uploaded logo images
 instead of the images from my packages" only if you want these to replace the package icon.)

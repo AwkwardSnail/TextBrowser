@@ -96,7 +96,37 @@ foreach ($size in 16, 24, 32, 48, 256) {
 $storeLogos = Join-Path $PSScriptRoot 'StoreLogos'
 New-Item -ItemType Directory -Force $storeLogos | Out-Null
 Save-Icon "$storeLogos\AppTileIcon-300x300.png" 300 300 'tile'
-Save-Icon "$storeLogos\BoxArt-2160x2160.png" 2160 2160 'full' 0.7
+
+# Box art (1:1) and poster art (9:16): the drawing centred on a dark screen,
+# with the app's name under it on the poster.
+function Save-Art([string]$path, [int]$w, [int]$h, [double]$size, [double]$centreY, [string[]]$title) {
+    $dv = New-Object System.Windows.Media.DrawingVisual
+    $dc = $dv.RenderOpen()
+    $dc.DrawRectangle($screen, $null, [System.Windows.Rect]::new(0, 0, $w, $h))
+    $k = $size / 100
+    # The drawing spans y 23..88 of its 100 box, so centre that span, not the box.
+    $m = [System.Windows.Media.Matrix]::new($k, 0, 0, $k, ($w - 100 * $k) / 2, $centreY - 55.5 * $k)
+    $dc.PushTransform([System.Windows.Media.MatrixTransform]::new($m))
+    $dc.DrawGeometry($dim, $null, $text)
+    $dc.DrawGeometry($fg, $null, $prompt)
+    $dc.Pop()
+    $face = New-Object System.Windows.Media.Typeface('Consolas')
+    $y = $centreY + 55 * $k
+    foreach ($line in $title) {
+        $ft = New-Object System.Windows.Media.FormattedText($line, [Globalization.CultureInfo]::InvariantCulture,
+            'LeftToRight', $face, ($w * 0.105), $fg, 1.0)
+        $dc.DrawText($ft, [System.Windows.Point]::new(($w - $ft.Width) / 2, $y))
+        $y += $ft.Height
+    }
+    $dc.Close()
+    $bmp = New-Object System.Windows.Media.Imaging.RenderTargetBitmap($w, $h, 96, 96, [System.Windows.Media.PixelFormats]::Pbgra32)
+    $bmp.Render($dv)
+    $enc = New-Object System.Windows.Media.Imaging.PngBitmapEncoder
+    $enc.Frames.Add([System.Windows.Media.Imaging.BitmapFrame]::Create($bmp))
+    $fs = [System.IO.File]::Create($path); $enc.Save($fs); $fs.Close()
+}
+Save-Art "$storeLogos\BoxArt-2160x2160.png" 2160 2160 1500 1080 @()
+Save-Art "$storeLogos\PosterArt-1440x2160.png" 1440 2160 1000 820 @('SimpleWeb', 'Text Browser')
 
 # TextBrowser.ico for the .exe and the window: PNG images inside an .ico container.
 $sizes = 16, 20, 24, 32, 40, 48, 64, 256
